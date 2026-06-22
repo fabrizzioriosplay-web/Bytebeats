@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bytebeat Base64 Converter 🚀</title>
+    <title>Bytebeat Hex Converter 🚀</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -14,6 +14,7 @@
             margin: 0 auto;
             text-align: center;
         }
+        h1 { color: #00ff9d; }
         .box {
             background-color: #1e1e1e;
             padding: 20px;
@@ -21,9 +22,13 @@
             margin-bottom: 20px;
             border: 1px solid #00ff9d;
         }
+        input[type="file"] {
+            margin: 15px auto;
+            color: #e0e0e0;
+        }
         textarea {
             width: 100%;
-            height: 140px;
+            height: 180px;
             background-color: #2a2a2a;
             color: #00ff9d;
             font-family: monospace;
@@ -35,17 +40,17 @@
 </head>
 <body>
 
-    <h1>Convertidor Bytebeat Pro (Base64 Antilag)</h1>
+    <h1>Convertidor Bytebeat Hex (Cero Lag y Sin Errores)</h1>
     
     <div class="box">
-        <p>Cargá tu audio corto aquí. Se comprimirá al formato más rápido existente.</p>
+        <p>Cargá tu audio corto. Se convertirá a una cadena Hexadecimal compacta para Dollchan.</p>
         <input type="file" id="audioFile" accept="audio/*">
         <p class="status" id="status">Esperando archivo...</p>
     </div>
 
     <div class="box">
-        <h3>Código para Dollchan (Cero Lag)</h3>
-        <textarea id="outputCode" readonly placeholder="El código ultra-optimizado aparecerá acá..."></textarea>
+        <h3>Código para Dollchan</h3>
+        <textarea id="outputCode" readonly placeholder="El código aparecerá acá..."></textarea>
     </div>
 
     <script>
@@ -53,7 +58,7 @@
             const file = e.target.files[0];
             if (!file) return;
 
-            document.getElementById('status').innerText = "Comprimiendo audio en buffer binario...";
+            document.getElementById('status').innerText = "Procesando ondas y limpiando silencios...";
             const arrayBuffer = await file.arrayBuffer();
             const ghostContext = new (window.AudioContext || window.webkitAudioContext)();
             
@@ -61,7 +66,7 @@
                 const audioBuffer = await ghostContext.decodeAudioData(arrayBuffer);
                 const rawData = audioBuffer.getChannelData(0);
                 
-                // 1. Recorte de silencios
+                // 1. Recorte de silencios automáticos
                 let inicio = 0;
                 let fin = rawData.length - 1;
                 const umbral = 0.02;
@@ -70,31 +75,30 @@
                 
                 const datosLimpios = rawData.subarray(inicio, fin);
                 
-                // 2. Compresión equilibrada a 11025Hz (Buena voz y ultra liviano)
+                // 2. Compresión limpia a 11025Hz (Ideal para que no se pierda la voz)
                 const step = Math.max(1, Math.round(audioBuffer.sampleRate / 11025));
-                let bytes = new Uint8Array(Math.floor(datosLimpios.length / step));
                 
-                let idx = 0;
+                let hexString = "";
+                let totalSamples = 0;
+                
                 for (let i = 0; i < datosLimpios.length; i += step) {
                     let byteVal = Math.floor((datosLimpios[i] + 1) * 127.5);
-                    bytes[idx++] = Math.max(0, Math.min(255, byteVal));
+                    byteVal = Math.max(0, Math.min(255, byteVal));
+                    
+                    // Convertimos el número a formato \xHH (Hexadecimal)
+                    let hex = byteVal.toString(16).padStart(2, '0');
+                    hexString += "\\x" + hex;
+                    totalSamples++;
                 }
 
-                // 3. Convertir el array binario a un String Base64 único
-                let binaryStr = "";
-                for (let i = 0; i < bytes.length; i++) {
-                    binaryStr += String.fromCharCode(bytes[i]);
-                }
-                const base64Str = btoa(binaryStr);
-
-                // 4. Fórmula mágica sin lag: decodifica el texto binario directo en memoria
-                const codeString = `((b,f)=>(b=atob("${base64Str}"),f=Uint8Array.from({length:b.length},(_,i)=>b.charCodeAt(i)),f[t%f.length]))()`;
+                // 3. Fórmula limpia: Un solo string evaluado con charCodeAt. Cero tokens pesados.
+                const codeString = `"${hexString}".charCodeAt(t % ${totalSamples})`;
                 
                 document.getElementById('outputCode').value = codeString;
-                document.getElementById('status').innerText = "¡Listo! Copiá el código y poné Dollchan en 11025 Hz.";
+                document.getElementById('status').innerText = `¡Listo! Configurar Dollchan a 11025 Hz.`;
 
             } catch (error) {
-                document.getElementById('status').innerText = "Error al procesar el archivo.";
+                document.getElementById('status').innerText = "Error al procesar el archivo de audio.";
             } finally {
                 ghostContext.close();
             }
