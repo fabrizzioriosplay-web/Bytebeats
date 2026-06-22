@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Convertidor Bytebeat Perfecto V4 🚀</title>
+    <title>Bytebeat Converter Ultra-Optimizado 🚀</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -44,17 +44,17 @@
 </head>
 <body>
 
-    <h1>Convertidor Bytebeat para Voces</h1>
+    <h1>Convertidor Bytebeat Ultra-Optimizado</h1>
     
     <div class="box">
-        <p style="text-align: center;">Cargá tu archivo de audio corto. La página mantendrá la tasa original para que no distorsione.</p>
+        <p style="text-align: center;">Cargá tu audio corto. Se comprimirá para evitar lag en Dollchan.</p>
         <input type="file" id="audioFile" accept="audio/*">
         <p class="status" id="status">Esperando archivo...</p>
     </div>
 
     <div class="box">
-        <h3>Código Bytebeat Generado</h3>
-        <p style="font-size: 14px; color: #aaa;">Copiá este bloque y pegalo directo en Dollchan:</p>
+        <h3>Código Bytebeat (Sin Lag)</h3>
+        <p style="font-size: 14px; color: #aaa;">Copiá este código y pegalo directo en Dollchan:</p>
         <textarea id="outputCode" readonly placeholder="El código aparecerá acá..."></textarea>
     </div>
 
@@ -63,20 +63,19 @@
             const file = e.target.files[0];
             if (!file) return;
 
-            document.getElementById('status').innerText = "Analizando muestras de audio y removiendo silencios...";
+            document.getElementById('status').innerText = "Optimizando y recortando audio...";
             
             const arrayBuffer = await file.arrayBuffer();
             const ghostContext = new (window.AudioContext || window.webkitAudioContext)();
             
             try {
                 const audioBuffer = await ghostContext.decodeAudioData(arrayBuffer);
-                const rawData = audioBuffer.getChannelData(0); // Canal único mono
-                const sampleRateOriginal = audioBuffer.sampleRate; // Frecuencia original (ej. 44100)
+                const rawData = audioBuffer.getChannelData(0);
                 
-                // 1. Recortar silencios automáticos al inicio y final
+                // 1. Recorte estricto de silencios iniciales y finales
                 let inicio = 0;
                 let fin = rawData.length - 1;
-                const umbralSilencio = 0.015; 
+                const umbralSilencio = 0.02; 
 
                 while (inicio < rawData.length && Math.abs(rawData[inicio]) < umbralSilencio) {
                     inicio++;
@@ -86,21 +85,25 @@
                 }
 
                 const datosLimpios = rawData.subarray(inicio, fin);
+                
+                // 2. ULTRA COMPRESIÓN: Bajamos a 4000Hz (Mucha menos carga de texto)
+                const targetSampleRate = 4000;
+                const step = Math.max(1, Math.round(audioBuffer.sampleRate / targetSampleRate));
                 let audioBytes = [];
                 
-                // 2. Mapeo directo de muestras sin saltearse ninguna para mantener fidelidad de voz
-                for (let i = 0; i < datosLimpios.length; i++) {
+                for (let i = 0; i < datosLimpios.length; i += step) {
                     let byteVal = Math.floor((datosLimpios[i] + 1) * 127.5);
                     if (byteVal > 255) byteVal = 255;
                     if (byteVal < 0) byteVal = 0;
                     audioBytes.push(byteVal);
                 }
 
-                // 3. Formato compatible de una línea para Dollchan
-                const codeString = `((a)=>(a[t%a.length]))([${audioBytes.join(',')}])`;
+                // 3. LA MAGIA: Dividimos 't' por 2 en la ecuación. 
+                // Esto compensa la velocidad si Dollchan está seteado en 8000Hz por defecto.
+                const codeString = `((a)=>(a[Math.floor(t/2)%a.length]))([${audioBytes.join(',')}])`;
                 
                 document.getElementById('outputCode').value = codeString;
-                document.getElementById('status').innerText = `¡Listo! Copiá el código. Configurar Dollchan a: ${sampleRateOriginal} Hz.`;
+                document.getElementById('status').innerText = `¡Listo! Optimizado a solo ${audioBytes.length} muestras. Cero lag.`;
 
             } catch (error) {
                 console.error(error);
