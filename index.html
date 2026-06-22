@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bytebeat Converter Ultra-Optimizado 🚀</title>
+    <title>Bytebeat Base64 Converter 🚀</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -12,50 +12,40 @@
             padding: 20px;
             max-width: 800px;
             margin: 0 auto;
+            text-align: center;
         }
-        h1 { color: #00ff9d; text-align: center; }
         .box {
             background-color: #1e1e1e;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
             margin-bottom: 20px;
-            border: 1px solid #333;
-        }
-        input[type="file"] {
-            display: block;
-            margin: 15px auto;
-            color: #e0e0e0;
+            border: 1px solid #00ff9d;
         }
         textarea {
             width: 100%;
-            height: 180px;
+            height: 140px;
             background-color: #2a2a2a;
             color: #00ff9d;
-            border: 1px solid #444;
-            border-radius: 5px;
             font-family: monospace;
             padding: 10px;
             box-sizing: border-box;
-            resize: vertical;
         }
-        .status { color: #ffca28; font-style: italic; text-align: center; font-weight: bold; }
+        .status { color: #ffca28; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <h1>Convertidor Bytebeat Ultra-Optimizado</h1>
+    <h1>Convertidor Bytebeat Pro (Base64 Antilag)</h1>
     
     <div class="box">
-        <p style="text-align: center;">Cargá tu audio corto. Se comprimirá para evitar lag en Dollchan.</p>
+        <p>Cargá tu audio corto aquí. Se comprimirá al formato más rápido existente.</p>
         <input type="file" id="audioFile" accept="audio/*">
         <p class="status" id="status">Esperando archivo...</p>
     </div>
 
     <div class="box">
-        <h3>Código Bytebeat (Sin Lag)</h3>
-        <p style="font-size: 14px; color: #aaa;">Copiá este código y pegalo directo en Dollchan:</p>
-        <textarea id="outputCode" readonly placeholder="El código aparecerá acá..."></textarea>
+        <h3>Código para Dollchan (Cero Lag)</h3>
+        <textarea id="outputCode" readonly placeholder="El código ultra-optimizado aparecerá acá..."></textarea>
     </div>
 
     <script>
@@ -63,8 +53,7 @@
             const file = e.target.files[0];
             if (!file) return;
 
-            document.getElementById('status').innerText = "Optimizando y recortando audio...";
-            
+            document.getElementById('status').innerText = "Comprimiendo audio en buffer binario...";
             const arrayBuffer = await file.arrayBuffer();
             const ghostContext = new (window.AudioContext || window.webkitAudioContext)();
             
@@ -72,41 +61,39 @@
                 const audioBuffer = await ghostContext.decodeAudioData(arrayBuffer);
                 const rawData = audioBuffer.getChannelData(0);
                 
-                // 1. Recorte estricto de silencios iniciales y finales
+                // 1. Recorte de silencios
                 let inicio = 0;
                 let fin = rawData.length - 1;
-                const umbralSilencio = 0.02; 
-
-                while (inicio < rawData.length && Math.abs(rawData[inicio]) < umbralSilencio) {
-                    inicio++;
-                }
-                while (fin > inicio && Math.abs(rawData[fin]) < umbralSilencio) {
-                    fin--;
-                }
-
+                const umbral = 0.02;
+                while (inicio < rawData.length && Math.abs(rawData[inicio]) < umbral) inicio++;
+                while (fin > inicio && Math.abs(rawData[fin]) < umbral) fin--;
+                
                 const datosLimpios = rawData.subarray(inicio, fin);
                 
-                // 2. ULTRA COMPRESIÓN: Bajamos a 4000Hz (Mucha menos carga de texto)
-                const targetSampleRate = 4000;
-                const step = Math.max(1, Math.round(audioBuffer.sampleRate / targetSampleRate));
-                let audioBytes = [];
+                // 2. Compresión equilibrada a 11025Hz (Buena voz y ultra liviano)
+                const step = Math.max(1, Math.round(audioBuffer.sampleRate / 11025));
+                let bytes = new Uint8Array(Math.floor(datosLimpios.length / step));
                 
+                let idx = 0;
                 for (let i = 0; i < datosLimpios.length; i += step) {
                     let byteVal = Math.floor((datosLimpios[i] + 1) * 127.5);
-                    if (byteVal > 255) byteVal = 255;
-                    if (byteVal < 0) byteVal = 0;
-                    audioBytes.push(byteVal);
+                    bytes[idx++] = Math.max(0, Math.min(255, byteVal));
                 }
 
-                // 3. LA MAGIA: Dividimos 't' por 2 en la ecuación. 
-                // Esto compensa la velocidad si Dollchan está seteado en 8000Hz por defecto.
-                const codeString = `((a)=>(a[Math.floor(t/2)%a.length]))([${audioBytes.join(',')}])`;
+                // 3. Convertir el array binario a un String Base64 único
+                let binaryStr = "";
+                for (let i = 0; i < bytes.length; i++) {
+                    binaryStr += String.fromCharCode(bytes[i]);
+                }
+                const base64Str = btoa(binaryStr);
+
+                // 4. Fórmula mágica sin lag: decodifica el texto binario directo en memoria
+                const codeString = `((b,f)=>(b=atob("${base64Str}"),f=Uint8Array.from({length:b.length},(_,i)=>b.charCodeAt(i)),f[t%f.length]))()`;
                 
                 document.getElementById('outputCode').value = codeString;
-                document.getElementById('status').innerText = `¡Listo! Optimizado a solo ${audioBytes.length} muestras. Cero lag.`;
+                document.getElementById('status').innerText = "¡Listo! Copiá el código y poné Dollchan en 11025 Hz.";
 
             } catch (error) {
-                console.error(error);
                 document.getElementById('status').innerText = "Error al procesar el archivo.";
             } finally {
                 ghostContext.close();
