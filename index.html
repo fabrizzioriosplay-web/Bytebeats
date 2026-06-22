@@ -57,23 +57,23 @@
 </head>
 <body>
 
-    <h1>Audio a Bytebeat de 8-bits</h1>
+    <h1>Convertidor de Audio a Código Bytebeat</h1>
     
     <div class="box">
-        <p style="text-align: center;">Seleccioná un audio corto (un efecto de sonido o un fragmento de pocos segundos para que el código no colapse).</p>
+        <p style="text-align: center;">Seleccioná un archivo de audio corto para generar la cadena matemática de 8 bits.</p>
         <input type="file" id="audioFile" accept="audio/*">
         <p class="status" id="status">Esperando archivo...</p>
     </div>
 
     <div class="box">
-        <h3>Controles de reproducción</h3>
-        <button id="btnPlay" disabled>▶ Escuchar Bytebeat</button>
+        <h3>Controles de la página</h3>
+        <button id="btnPlay" disabled>▶ Probar acá</button>
         <button id="btnStop" disabled>⏹ Detener</button>
     </div>
 
     <div class="box">
-        <h3>Código Bytebeat Generado</h3>
-        <p style="font-size: 14px; color: #aaa;">Copiá este bloque de datos y la ecuación para usarlo en reproductores o scripts:</p>
+        <h3>Código Bytebeat Generado (Compatible con Dollchan y otros)</h3>
+        <p style="font-size: 14px; color: #aaa;">Copiá este bloque directo a Dollchan o a tu index.html:</p>
         <textarea id="outputCode" readonly placeholder="El código aparecerá acá..."></textarea>
     </div>
 
@@ -86,73 +86,58 @@
             const file = e.target.files[0];
             if (!file) return;
 
-            document.getElementById('status').innerText = "Procesando audio y reduciendo calidad...";
+            document.getElementById('status').innerText = "Procesando ondas y formateando código...";
             
-            // Crear un lector de archivos binarios
             const arrayBuffer = await file.arrayBuffer();
-            
-            // Crear un contexto de audio fantasma para decodificar cualquier formato (mp3, wav, ogg, etc)
             const ghostContext = new (window.AudioContext || window.webkitAudioContext)();
             
             try {
                 const audioBuffer = await ghostContext.decodeAudioData(arrayBuffer);
-                
-                // Extraer el canal 1 (Mono)
                 const rawData = audioBuffer.getChannelData(0);
                 
-                // Tasa de muestreo original y reducción (Queremos bajar a ~8000Hz para la estética retro)
                 const originalSampleRate = audioBuffer.sampleRate;
                 const targetSampleRate = 8000;
                 const step = Math.max(1, Math.round(originalSampleRate / targetSampleRate));
                 
                 audioBytes = [];
                 
-                // Convertir los datos flotantes (-1.0 a 1.0) a 8 bits enteros (0 a 255)
                 for (let i = 0; i < rawData.length; i += step) {
-                    // Normalizar float a rango 0 - 255
                     let byteVal = Math.floor((rawData[i] + 1) * 127.5);
                     if (byteVal > 255) byteVal = 255;
                     if (byteVal < 0) byteVal = 0;
                     audioBytes.push(byteVal);
                 }
 
-                // Generar el texto para el Textarea
-                const codeString = `// Bytebeat de 8-bits generado\nconst audioData = [${audioBytes.join(',')}];\n\n// Ecuación matemática basada en tiempo t\nreturn audioData[t % audioData.length];`;
-                document.getElementById('outputCode').value = codeString;
+                // --- AQUÍ EDITAMOS EL FORMATO DE SALIDA ---
+                // Usamos 'var' en vez de 'const' y quitamos el 'return' para que Dollchan no tire error de compilación
+                const codeString = `var audioData = [${audioBytes.join(',')}];\n\naudioData[t % audioData.length]`;
                 
-                document.getElementById('status').innerText = `¡Listo! Audio convertido a ${audioBytes.length} muestras de 8 bits.`;
+                document.getElementById('outputCode').value = codeString;
+                document.getElementById('status').innerText = `¡Listo! Código generado con ${audioBytes.length} muestras de audio.`;
                 document.getElementById('btnPlay').disabled = false;
 
             } catch (error) {
                 console.error(error);
-                document.getElementById('status').innerText = "Error al decodificar el archivo. Intentá con otro formato o un archivo más corto.";
+                document.getElementById('status').innerText = "Error al procesar el archivo.";
             } finally {
                 ghostContext.close();
             }
         });
 
-        // --- SISTEMA DE REPRODUCCIÓN EN VIVO DEL BYTEBEAT ---
+        // Reproductor interno de la página
         document.getElementById('btnPlay').addEventListener('click', () => {
             if (audioBytes.length === 0) return;
             
-            // Inicializar Web Audio API para reproducir por software
             audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 8000 });
-            
-            // Un ScriptProcessorNode nos permite generar audio directamente con código matemático en tiempo real
             scriptNode = audioCtx.createScriptProcessor(4096, 0, 1);
-            
-            let t = 0; // Variable de tiempo de Bytebeat
+            let t = 0;
 
             scriptNode.onaudioprocess = (audioProcessingEvent) => {
                 const outputBuffer = audioProcessingEvent.outputBuffer;
                 const channelData = outputBuffer.getChannelData(0);
                 
                 for (let sample = 0; sample < outputBuffer.length; sample++) {
-                    // AQUÍ se ejecuta la lógica pura de Bytebeat:
-                    // Evaluamos la muestra correspondiente usando el módulo (%) sobre el tiempo
                     let byteValue = audioBytes[t % audioBytes.length];
-                    
-                    // Transformamos de nuevo el byte (0-255) a flotante (-1 a 1) para los parlantes
                     channelData[sample] = (byteValue / 127.5) - 1.0;
                     t++;
                 }
@@ -164,14 +149,8 @@
         });
 
         document.getElementById('btnStop').addEventListener('click', () => {
-            if (scriptNode) {
-                scriptNode.disconnect();
-                scriptNode = null;
-            }
-            if (audioCtx) {
-                audioCtx.close();
-                audioCtx = null;
-            }
+            if (scriptNode) scriptNode.disconnect();
+            if (audioCtx) audioCtx.close();
             document.getElementById('btnPlay').disabled = false;
             document.getElementById('btnStop').disabled = true;
         });
