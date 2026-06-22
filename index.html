@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio a Bytebeat Converter 🚀</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 { color: #00ff9d; text-align: center; }
+        .box {
+            background-color: #1e1e1e;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
+        }
+        input[type="file"] {
+            display: block;
+            margin: 15px auto;
+            color: #e0e0e0;
+        }
+        button {
+            background-color: #00ff9d;
+            color: #121212;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+            transition: 0.2s;
+        }
+        button:hover { background-color: #00cc7d; }
+        button:disabled { background-color: #555; color: #aaa; cursor: not-allowed; }
+        textarea {
+            width: 100%;
+            height: 150px;
+            background-color: #2a2a2a;
+            color: #00ff9d;
+            border: 1px solid #444;
+            border-radius: 5px;
+            font-family: monospace;
+            padding: 10px;
+            box-sizing: border-box;
+            resize: vertical;
+        }
+        .status { color: #ffca28; font-style: italic; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <h1>Audio a Bytebeat de 8-bits</h1>
+    
+    <div class="box">
+        <p style="text-align: center;">Seleccioná un audio corto (un efecto de sonido o un fragmento de pocos segundos para que el código no colapse).</p>
+        <input type="file" id="audioFile" accept="audio/*">
+        <p class="status" id="status">Esperando archivo...</p>
+    </div>
+
+    <div class="box">
+        <h3>Controles de reproducción</h3>
+        <button id="btnPlay" disabled>▶ Escuchar Bytebeat</button>
+        <button id="btnStop" disabled>⏹ Detener</button>
+    </div>
+
+    <div class="box">
+        <h3>Código Bytebeat Generado</h3>
+        <p style="font-size: 14px; color: #aaa;">Copiá este bloque de datos y la ecuación para usarlo en reproductores o scripts:</p>
+        <textarea id="outputCode" readonly placeholder="El código aparecerá acá..."></textarea>
+    </div>
+
+    <script>
+        let audioBytes = [];
+        let audioCtx = null;
+        let scriptNode = null;
+
+        document.getElementById('audioFile').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            document.getElementById('status').innerText = "Procesando audio y reduciendo calidad...";
+            
+            // Crear un lector de archivos binarios
+            const arrayBuffer = await file.arrayBuffer();
+            
+            // Crear un contexto de audio fantasma para decodificar cualquier formato (mp3, wav, ogg, etc)
+            const ghostContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            try {
+                const audioBuffer = await ghostContext.decodeAudioData(arrayBuffer);
+                
+                // Extraer el canal 1 (Mono)
+                const rawData = audioBuffer.getChannelData(0);
+                
+                // Tasa de muestreo original y reducción (Queremos bajar a ~8000Hz para la estética retro)
+                const originalSampleRate = audioBuffer.sampleRate;
+                const targetSampleRate = 8000;
+                const step = Math.max(1, Math.round(originalSampleRate / targetSampleRate));
+                
+                audioBytes = [];
+                
+                // Convertir los datos flotantes (-1.0 a 1.0) a 8 bits enteros (0 a 255)
+                for (let i = 0; i < rawData.length; i += step) {
+                    // Normalizar float a rango 0 - 255
+                    let byteVal = Math.floor((rawData[i] + 1) * 127.5);
+                    if (byteVal > 255) byteVal = 255;
+                    if (byteVal < 0) byteVal = 0;
+                    audioBytes.push(byteVal);
+                }
+
+                // Generar el texto para el Textarea
+                const codeString = `// Bytebeat de 8-bits generado\nconst audioData = [${audioBytes.join(',')}];\n\n// Ecuación matemática basada en tiempo t\nreturn audioData[t % audioData.length];`;
+                document.getElementById('outputCode').value = codeString;
+                
+                document.getElementById('status').innerText = `¡Listo! Audio convertido a ${audioBytes.length} muestras de 8 bits.`;
+                document.getElementById('btnPlay').disabled = false;
+
+            } catch (error) {
+                console.error(error);
+                document.getElementById('status').innerText = "Error al decodificar el archivo. Intentá con otro formato o un archivo más corto.";
+            } finally {
+                ghostContext.close();
+            }
+        });
+
+        // --- SISTEMA DE REPRODUCCIÓN EN VIVO DEL BYTEBEAT ---
+        document.getElementById('btnPlay').addEventListener('click', () => {
+            if (audioBytes.length === 0) return;
+            
+            // Inicializar Web Audio API para reproducir por software
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 8000 });
+            
+            // Un ScriptProcessorNode nos permite generar audio directamente con código matemático en tiempo real
+            scriptNode = audioCtx.createScriptProcessor(4096, 0, 1);
+            
+            let t = 0; // Variable de tiempo de Bytebeat
+
+            scriptNode.onaudioprocess = (audioProcessingEvent) => {
+                const outputBuffer = audioProcessingEvent.outputBuffer;
+                const channelData = outputBuffer.getChannelData(0);
+                
+                for (let sample = 0; sample < outputBuffer.length; sample++) {
+                    // AQUÍ se ejecuta la lógica pura de Bytebeat:
+                    // Evaluamos la muestra correspondiente usando el módulo (%) sobre el tiempo
+                    let byteValue = audioBytes[t % audioBytes.length];
+                    
+                    // Transformamos de nuevo el byte (0-255) a flotante (-1 a 1) para los parlantes
+                    channelData[sample] = (byteValue / 127.5) - 1.0;
+                    t++;
+                }
+            };
+
+            scriptNode.connect(audioCtx.destination);
+            document.getElementById('btnPlay').disabled = true;
+            document.getElementById('btnStop').disabled = false;
+        });
+
+        document.getElementById('btnStop').addEventListener('click', () => {
+            if (scriptNode) {
+                scriptNode.disconnect();
+                scriptNode = null;
+            }
+            if (audioCtx) {
+                audioCtx.close();
+                audioCtx = null;
+            }
+            document.getElementById('btnPlay').disabled = false;
+            document.getElementById('btnStop').disabled = true;
+        });
+    </script>
+</body>
+</html>
